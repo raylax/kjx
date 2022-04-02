@@ -1,11 +1,10 @@
 package org.inurl.kjx.parser
 
-import org.inurl.kjx.util.Log
 import java.io.DataInputStream
 import java.io.EOFException
 import java.nio.charset.StandardCharsets
 
-class ClassParser(private val source: DataInputStream) {
+class ClassParser(private val source: DataInputStream, private val name: String) {
 
     companion object {
         // 常量类型
@@ -29,6 +28,7 @@ class ClassParser(private val source: DataInputStream) {
     }
 
     fun parse(): Klass {
+        val start = System.currentTimeMillis()
         val magic = readUint4()
         if (magic != 0xCAFEBABE) {
             throw IllegalStateException("Unexpected magic")
@@ -58,6 +58,7 @@ class ClassParser(private val source: DataInputStream) {
                 else -> source.skip(len)
             }
         }
+
         return klass
     }
 
@@ -258,7 +259,6 @@ class ClassParser(private val source: DataInputStream) {
 
     private fun parseConstantPool(): ConstantPool {
         val constantCount = source.readUnsignedShort() - 1
-        Log.debug { "Constant count = $constantCount" }
         val constantPool = ConstantPool()
         var i = 1
         while (i <= constantCount) {

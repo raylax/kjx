@@ -29,9 +29,9 @@ class Klass {
 
     var sourceFileIndex: Int = 0
 
-    fun getName() = cp.getString(nameIndex)
+    fun getName() = cp.parseClass(nameIndex)
 
-    fun getSuperName() = cp.getString(superNameIndex)
+    fun getSuperName() = cp.parseClass(superNameIndex)
 
     fun getVersion(): String {
         val i = version - versionOffset
