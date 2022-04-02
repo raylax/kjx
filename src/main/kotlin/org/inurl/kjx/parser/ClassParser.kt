@@ -1,5 +1,6 @@
 package org.inurl.kjx.parser
 
+import org.inurl.kjx.util.Log
 import java.io.DataInputStream
 import java.io.EOFException
 import java.nio.charset.StandardCharsets
@@ -41,6 +42,9 @@ class ClassParser(private val source: DataInputStream, private val name: String)
 
         klass.access = readUint2()
         klass.nameIndex = readUint2()
+
+        Log.debug { klass.getName() }
+
         klass.superNameIndex = readUint2()
         klass.interfaces = parseInterfaces(cp)
 

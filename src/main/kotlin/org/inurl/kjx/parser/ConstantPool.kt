@@ -1,7 +1,5 @@
 package org.inurl.kjx.parser
 
-import org.inurl.kjx.MainTest
-import java.util.*
 import kotlin.collections.HashMap
 
 class ConstantPool {
@@ -37,10 +35,15 @@ class ConstantPool {
             else -> throw IllegalStateException()
         }
 
-    fun parseClass(index: Int) = parseClassName(getString(index))
+    fun parseClass(index: Int): String =
+        when (val item = get(index)) {
+            is StringValue -> item.value.replace("/", ".")
+            is StringRef -> parseClassName(getString(index))
+            is ClassRef -> parseClass(item.nameIndex)
+            else -> throw IllegalStateException()
+        }
 
     fun parseDescriptor(index: Int): Descriptor {
-        val joiner = StringJoiner(" ")
         val descriptor = getString(index)
 
         val endIndex = descriptor.indexOf(')')
