@@ -2,6 +2,7 @@ package org.inurl.kjx.parser
 
 import org.inurl.kjx.util.Log
 import java.io.DataInputStream
+import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
 import java.util.zip.ZipInputStream
@@ -9,6 +10,8 @@ import java.util.zip.ZipInputStream
 class JarParser(private val source: InputStream, private val name: String) {
 
     constructor(path: String): this(FileInputStream(path), path)
+
+    constructor(file: File): this(FileInputStream(file), file.name)
 
     fun parse(): List<Klass> {
         Log.debug { "Parsing $name" }

@@ -139,12 +139,6 @@ class ClassParser(private val source: DataInputStream, private val name: String)
 
     private fun parseCode(cp: ConstantPool): Code {
         val code = Code(cp, readUint2(), readUint2(), readBytes(readUint4().toInt()))
-        try {
-            code.parse()
-        } catch (e: IllegalStateException) {
-            println(name)
-            throw e
-        }
 
         val exceptions: MutableList<Exception> = mutableListOf()
 
@@ -152,7 +146,6 @@ class ClassParser(private val source: DataInputStream, private val name: String)
             exceptions += Exception(readUint2(), readUint2(), readUint2(), readUint2())
         }
 
-        val lineNumberTable: MutableList<LineNumber> = mutableListOf()
         val localVariables: MutableList<LocalVariable> = mutableListOf()
         val localVariableTypes: MutableList<LocalVariableType> = mutableListOf()
         val stackFrames: MutableList<StackFrame> = mutableListOf()
@@ -160,7 +153,9 @@ class ClassParser(private val source: DataInputStream, private val name: String)
             val attrName = cp.getString(readUint2())
             val len = readUint4()
             when (attrName) {
-                "LineNumberTable" -> lineNumberTable += parseLineNumbers()
+                "LineNumberTable" -> forEach {
+                    code.lineNumberTable[readUint2()] = readUint2() - 1
+                }
                 "LocalVariableTable" -> localVariables += parseLocalVariables()
                 "StackMapTable" -> stackFrames += parseStackFrames(cp)
                 "LocalVariableTypeTable" -> localVariableTypes += parseLocalVariableTypes(cp)
@@ -168,9 +163,14 @@ class ClassParser(private val source: DataInputStream, private val name: String)
             }
         }
         code.localVariableTypes = localVariableTypes
-        code.lineNumberTable = lineNumberTable
         code.localVariables = localVariables
         code.stackFrames = stackFrames
+        try {
+            code.parse()
+        } catch (e: IllegalStateException) {
+            println(name)
+            throw e
+        }
         return code
     }
 
@@ -180,14 +180,6 @@ class ClassParser(private val source: DataInputStream, private val name: String)
             localVariables += LocalVariable(readUint2(), readUint2(), readUint2(), readUint2(), readUint2())
         }
         return localVariables
-    }
-
-    private fun parseLineNumbers(): List<LineNumber> {
-        val lineNumbers: MutableList<LineNumber> = mutableListOf()
-        forEach {
-            lineNumbers += LineNumber(readUint2(), readUint2())
-        }
-        return lineNumbers
     }
 
     private fun parseFields(cp: ConstantPool): List<Field> {

@@ -1,7 +1,5 @@
 package org.inurl.kjx.parser
 
-import kotlin.system.exitProcess
-
 class Code(val cp: ConstantPool, val maxStack: Int, val maxLocals: Int, val ops: ByteArray) {
 
     class Label() {
@@ -10,7 +8,7 @@ class Code(val cp: ConstantPool, val maxStack: Int, val maxLocals: Int, val ops:
 
     lateinit var exceptionTable: List<Exception>
 
-    lateinit var lineNumberTable: List<LineNumber>
+    val lineNumberTable: MutableMap<Int, Int> = mutableMapOf()
 
     lateinit var localVariables: List<LocalVariable>
 
@@ -22,24 +20,32 @@ class Code(val cp: ConstantPool, val maxStack: Int, val maxLocals: Int, val ops:
 
     fun parse() {
         labels = arrayOfNulls(ops.size)
-        var currentIndex = 0
 
+        var offset = 0
 
-        fun read1(): Int = ops[currentIndex++].toInt()
-        fun readU1(): Int = ops[currentIndex++].toInt() and 0xff
+        fun read1(): Int = ops[offset++].toInt()
+        fun readU1(): Int = ops[offset++].toInt() and 0xff
         fun readU2(): Int =
-            ((ops[currentIndex++].toInt() and 0xff) shl 8) or
-            (ops[currentIndex++].toInt() and 0xff)
+            ((ops[offset++].toInt() and 0xff) shl 8) or
+            (ops[offset++].toInt() and 0xff)
         fun read2(): Int = readU2().toShort().toInt()
         fun readU4(): Int =
-            ((ops[currentIndex++].toInt() and 0xff) shl 24) or
-            ((ops[currentIndex++].toInt() and 0xff) shl 16) or
-            ((ops[currentIndex++].toInt() and 0xff) shl 8) or
-            (ops[currentIndex++].toInt() and 0xff)
+            ((ops[offset++].toInt() and 0xff) shl 24) or
+            ((ops[offset++].toInt() and 0xff) shl 16) or
+            ((ops[offset++].toInt() and 0xff) shl 8) or
+            (ops[offset++].toInt() and 0xff)
 
-        while (currentIndex < ops.size) {
-            val opcode = ops[currentIndex].toInt() and 0xff
-            val opcodeName = "%3d ".format(currentIndex) + Opcodes.getName(opcode)
+
+        while (offset < ops.size) {
+            val opcode = ops[offset].toInt() and 0xff
+            val line = lineNumberTable[offset]
+
+            var opcodeName = Opcodes.getName(opcode)!!.padEnd(15, ' ')
+            opcodeName = if (line == null) {
+                "     %03d ".format(offset) + opcodeName
+            } else {
+                "L%03d %03d ".format(line, offset) + opcodeName
+            }
             when (opcode) {
                 Opcodes.NOP,
                 Opcodes.ACONST_NULL,
@@ -149,7 +155,7 @@ class Code(val cp: ConstantPool, val maxStack: Int, val maxLocals: Int, val ops:
                 Opcodes.MONITORENTER,
                 Opcodes.MONITOREXIT,
                 -> {
-                    currentIndex += 1
+                    offset += 1
                     println(opcodeName)
                 }
                 Opcodes.ILOAD_0,
@@ -173,7 +179,7 @@ class Code(val cp: ConstantPool, val maxStack: Int, val maxLocals: Int, val ops:
                 Opcodes.ALOAD_2,
                 Opcodes.ALOAD_3,
                 -> {
-                    currentIndex += 1
+                    offset += 1
                     println("$opcodeName ${(opcode - Opcodes.ILOAD_0) and 0x3}")
                 }
                 Opcodes.ISTORE_0,
@@ -197,7 +203,7 @@ class Code(val cp: ConstantPool, val maxStack: Int, val maxLocals: Int, val ops:
                 Opcodes.ASTORE_2,
                 Opcodes.ASTORE_3,
                 -> {
-                    currentIndex += 1
+                    offset += 1
                     println("$opcodeName ${(opcode - Opcodes.ISTORE_0) and 0x3}")
                 }
                 Opcodes.IFEQ,
@@ -219,18 +225,18 @@ class Code(val cp: ConstantPool, val maxStack: Int, val maxLocals: Int, val ops:
                 Opcodes.IFNULL,
                 Opcodes.IFNONNULL,
                 -> {
-                    currentIndex++
-                    println("$opcodeName #${currentIndex - 1 + read2()}")
+                    offset++
+                    println("$opcodeName #${offset - 1 + read2()}")
                 }
                 Opcodes.GOTO_W,
                 Opcodes.JSR_W,
                 -> {
-                    currentIndex++
+                    offset++
                     println("$opcodeName #${readU4()}")
                 }
                 Opcodes.WIDE -> {
-                    currentIndex++
-                    val subOpcode = ops[currentIndex++].toInt() and 0xff
+                    offset++
+                    val subOpcode = ops[offset++].toInt() and 0xff
                     val subOpcodeName = Opcodes.getName(subOpcode)
                     when (subOpcode) {
                         Opcodes.ILOAD,
@@ -265,27 +271,27 @@ class Code(val cp: ConstantPool, val maxStack: Int, val maxLocals: Int, val ops:
                 Opcodes.ASTORE,
                 Opcodes.RET,
                 -> {
-                    currentIndex++
+                    offset++
                     println("$opcodeName ${readU1()}")
                 }
                 Opcodes.BIPUSH,
                 Opcodes.NEWARRAY,
                 -> {
-                    currentIndex++
+                    offset++
                     println("$opcodeName ${read1()}")
                 }
                 Opcodes.SIPUSH -> {
-                    currentIndex++
+                    offset++
                     println("$opcodeName ${read2()}")
                 }
                 Opcodes.LDC -> {
-                    currentIndex++
+                    offset++
                     println("$opcodeName ${cp.get(readU1())}")
                 }
                 Opcodes.LDC_W,
                 Opcodes.LDC2_W,
                 -> {
-                    currentIndex++
+                    offset++
                     println("$opcodeName ${cp.get(readU2())}")
                 }
                 Opcodes.GETSTATIC,
@@ -300,28 +306,28 @@ class Code(val cp: ConstantPool, val maxStack: Int, val maxLocals: Int, val ops:
                 Opcodes.CHECKCAST,
                 Opcodes.INSTANCEOF,
                 -> {
-                    currentIndex++
+                    offset++
                     println("$opcodeName ${cp.get(readU2())}")
                 }
                 Opcodes.IINC -> {
-                    currentIndex++
+                    offset++
                     println("$opcodeName ${readU1()} ${read1()}")
                 }
                 Opcodes.INVOKEINTERFACE -> {
-                    currentIndex++
+                    offset++
                     println("$opcodeName ${cp.get(readU2())}")
-                    currentIndex += 2
+                    offset += 2
                 }
                 Opcodes.INVOKEDYNAMIC -> {
-                    currentIndex++
+                    offset++
                     println("$opcodeName ${cp.get(readU2())}")
-                    currentIndex += 2
+                    offset += 2
                 }
                 Opcodes.MULTIANEWARRAY -> {
-                    currentIndex += 4
+                    offset += 4
                 }
                 Opcodes.LOOKUPSWITCH -> {
-                    currentIndex += 4 - (currentIndex and 3)
+                    offset += 4 - (offset and 3)
                     readU4()
                     val numPairs = readU4()
                     val keys = IntArray(numPairs)
@@ -332,7 +338,7 @@ class Code(val cp: ConstantPool, val maxStack: Int, val maxLocals: Int, val ops:
                     }
                 }
                 Opcodes.TABLESWITCH -> {
-                    currentIndex += 4 - (currentIndex and 3)
+                    offset += 4 - (offset and 3)
                     labels[readU4()] = Label()
                     val low = readU4()
                     var numTableEntries = readU4() - low + 1
@@ -343,6 +349,22 @@ class Code(val cp: ConstantPool, val maxStack: Int, val maxLocals: Int, val ops:
                 else -> throw IllegalStateException("$opcode")
             }
         }
+
+        if (localVariables.isNotEmpty()) {
+            println()
+            println("Start  Length  Slot  Name  Signature")
+            for (localVariable in localVariables) {
+                println("%5d%7d%6d%7s  %s".format(
+                    localVariable.startPc,
+                    localVariable.length,
+                    localVariable.index,
+                    cp.getString(localVariable.nameIndex),
+                    cp.getString(localVariable.descriptorIndex))
+                )
+            }
+            println()
+        }
+
     }
 
 }
