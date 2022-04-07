@@ -12,6 +12,10 @@ class Method(
 
     lateinit var code: Code
 
+    var exceptions: List<Int> = mutableListOf()
+
+    var signatureIndex = 0
+
     fun getName() = cp.getString(nameIndex)
 
     fun getDescriptor() = cp.getString(descriptorIndex)

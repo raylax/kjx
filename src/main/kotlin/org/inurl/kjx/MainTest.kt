@@ -1,12 +1,15 @@
 package org.inurl.kjx
 
-import org.inurl.kjx.parser.JarParser
+import org.inurl.kjx.parser.ClassParser
+import java.io.DataInputStream
+import java.io.File
 
 object MainTest {
 
     @JvmStatic
     fun main(args: Array<String>) {
-        JarParser("D:\\runtime\\jdk1.8.0_291\\jre\\lib\\rt.jar").parse()
+        val file = File("E:\\source\\java\\test\\target\\classes\\com\\test\\Test.class")
+        ClassParser(DataInputStream(file.inputStream()), file.name).parse()
     }
 
 }

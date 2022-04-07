@@ -29,6 +29,8 @@ class Klass {
 
     var sourceFileIndex: Int = 0
 
+    var innerClasses: List<InnerClass> = mutableListOf()
+
     fun getName() = cp.parseClass(nameIndex)
 
     fun getSuperName() = cp.parseClass(superNameIndex)

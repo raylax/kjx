@@ -29,10 +29,11 @@ class ConstantPool {
         }
 
     fun getString(index: Int): String =
-        when (val item = items[index]) {
+        when (val item = items[index]!!) {
             is StringValue -> item.value
             is StringRef -> getString(item.stringIndex)
-            else -> throw IllegalStateException()
+            is ClassRef -> getString(item.nameIndex)
+            else -> throw IllegalStateException(item::class.qualifiedName)
         }
 
     fun parseClass(index: Int): String =
@@ -84,13 +85,31 @@ class ConstantPool {
 
     open class Item
 
-    inner class ClassRef(val nameIndex: Int): Item()
+    inner class ClassRef(val nameIndex: Int): Item() {
+        override fun toString() = parseClassName(getString(nameIndex))
+    }
 
-    inner class FieldRef(override val classIndex: Int, override val nameAndTypeIndex: Int): ClassNameAndTypeRef(classIndex, nameAndTypeIndex)
+    inner class FieldRef(override val classIndex: Int, override val nameAndTypeIndex: Int): ClassNameAndTypeRef(classIndex, nameAndTypeIndex) {
+        override fun toString(): String {
+            val nameAndTypeRef = get(nameAndTypeIndex) as NameAndTypeRef
+            return getString(classIndex) + "." + getString(nameAndTypeRef.nameIndex) + ":" + getString(nameAndTypeRef.descriptorIndex)
+        }
+    }
 
-    inner class MethodRef(override val classIndex: Int, override val nameAndTypeIndex: Int): ClassNameAndTypeRef(classIndex, nameAndTypeIndex)
+    inner class MethodRef(override val classIndex: Int, override val nameAndTypeIndex: Int): ClassNameAndTypeRef(classIndex, nameAndTypeIndex) {
+        override fun toString(): String {
+            val nameAndTypeRef = get(nameAndTypeIndex) as NameAndTypeRef
+            return getString(classIndex) + "." + getString(nameAndTypeRef.nameIndex) + getString(nameAndTypeRef.descriptorIndex)
+        }
+    }
 
-    inner class InterfaceMethodRef(override val classIndex: Int, override val nameAndTypeIndex: Int): ClassNameAndTypeRef(classIndex, nameAndTypeIndex)
+
+    inner class InterfaceMethodRef(override val classIndex: Int, override val nameAndTypeIndex: Int): ClassNameAndTypeRef(classIndex, nameAndTypeIndex) {
+        override fun toString(): String {
+            val nameAndTypeRef = get(nameAndTypeIndex) as NameAndTypeRef
+            return getString(classIndex) + "." + getString(nameAndTypeRef.nameIndex) + getString(nameAndTypeRef.descriptorIndex)
+        }
+    }
 
     inner class StringRef(val stringIndex: Int): Item() {
         override fun toString() = get(stringIndex).toString()
@@ -130,6 +149,8 @@ class ConstantPool {
 
     open inner class Dynamic(open val bootstrapMethodAttrIndex: Int, open val nameAndTypeIndex: Int): Item()
 
-    abstract inner class ClassNameAndTypeRef(open val classIndex: Int, open val nameAndTypeIndex: Int): Item()
+    abstract inner class ClassNameAndTypeRef(protected open val classIndex: Int, protected open val nameAndTypeIndex: Int): Item() {
+        override fun toString() = parseClass(classIndex) + "." + get(nameAndTypeIndex)
+    }
 
 }

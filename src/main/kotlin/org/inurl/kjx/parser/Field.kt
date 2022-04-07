@@ -12,6 +12,8 @@ class Field(
 
     var constantValue: ConstantValue? = null
 
+    var signatureIndex = 0
+
     fun getName() = cp.getString(nameIndex)
 
     fun getDescriptor() = cp.getString(descriptorIndex)

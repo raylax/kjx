@@ -1,6 +1,5 @@
 package org.inurl.kjx.parser
 
-import org.inurl.kjx.util.Log
 import java.io.DataInputStream
 import java.io.EOFException
 import java.nio.charset.StandardCharsets
@@ -29,7 +28,6 @@ class ClassParser(private val source: DataInputStream, private val name: String)
     }
 
     fun parse(): Klass {
-        val start = System.currentTimeMillis()
         val magic = readUint4()
         if (magic != 0xCAFEBABE) {
             throw IllegalStateException("Unexpected magic")
@@ -42,8 +40,6 @@ class ClassParser(private val source: DataInputStream, private val name: String)
 
         klass.access = readUint2()
         klass.nameIndex = readUint2()
-
-        Log.debug { klass.getName() }
 
         klass.superNameIndex = readUint2()
         klass.interfaces = parseInterfaces(cp)
@@ -59,6 +55,7 @@ class ClassParser(private val source: DataInputStream, private val name: String)
                 "RuntimeVisibleAnnotations" -> klass.annotations += parseAnnotations(cp)
                 "Signature" -> klass.signatureIndex = readUint2()
                 "SourceFile" -> klass.sourceFileIndex = readUint2()
+                "InnerClasses" -> forEach { klass.innerClasses += InnerClass(cp, readUint2(), readUint2(), readUint2(), readUint2()) }
                 else -> source.skip(len)
             }
         }
@@ -82,10 +79,20 @@ class ClassParser(private val source: DataInputStream, private val name: String)
             when (attrName) {
                 "RuntimeVisibleAnnotations" -> method.annotations += parseAnnotations(cp)
                 "Code" -> method.code = parseCode(cp)
+                "Exceptions" -> forEach { method.exceptions += readUint2() }
+                "Signature" -> method.signatureIndex = readUint2()
                 else -> source.skip(len)
             }
         }
         return method
+    }
+
+    private fun parseLocalVariableTypes(cp: ConstantPool): List<LocalVariableType> {
+        val localVariableTypes: MutableList<LocalVariableType> = mutableListOf()
+        forEach {
+            localVariableTypes += LocalVariableType(cp, readUint2(), readUint2(), readUint2(), readUint2(), readUint2())
+        }
+        return localVariableTypes
     }
 
     private fun parseStackFrames(cp: ConstantPool): List<StackFrame> {
@@ -131,7 +138,14 @@ class ClassParser(private val source: DataInputStream, private val name: String)
         }
 
     private fun parseCode(cp: ConstantPool): Code {
-        val code = Code(readUint2(), readUint2(), readBytes(readUint4().toInt()))
+        val code = Code(cp, readUint2(), readUint2(), readBytes(readUint4().toInt()))
+        try {
+            code.parse()
+        } catch (e: IllegalStateException) {
+            println(name)
+            throw e
+        }
+
         val exceptions: MutableList<Exception> = mutableListOf()
 
         forEach {
@@ -140,6 +154,7 @@ class ClassParser(private val source: DataInputStream, private val name: String)
 
         val lineNumberTable: MutableList<LineNumber> = mutableListOf()
         val localVariables: MutableList<LocalVariable> = mutableListOf()
+        val localVariableTypes: MutableList<LocalVariableType> = mutableListOf()
         val stackFrames: MutableList<StackFrame> = mutableListOf()
         forEach {
             val attrName = cp.getString(readUint2())
@@ -148,9 +163,11 @@ class ClassParser(private val source: DataInputStream, private val name: String)
                 "LineNumberTable" -> lineNumberTable += parseLineNumbers()
                 "LocalVariableTable" -> localVariables += parseLocalVariables()
                 "StackMapTable" -> stackFrames += parseStackFrames(cp)
+                "LocalVariableTypeTable" -> localVariableTypes += parseLocalVariableTypes(cp)
                 else -> source.skip(len)
             }
         }
+        code.localVariableTypes = localVariableTypes
         code.lineNumberTable = lineNumberTable
         code.localVariables = localVariables
         code.stackFrames = stackFrames
@@ -189,6 +206,7 @@ class ClassParser(private val source: DataInputStream, private val name: String)
             when (attrName) {
                 "RuntimeVisibleAnnotations" -> field.annotations += parseAnnotations(cp)
                 "ConstantValue" -> field.constantValue = parseConstantValue(cp, cp.getString(field.descriptorIndex))
+                "Signature" -> field.signatureIndex = readUint2()
                 else -> source.skip(len)
             }
         }
