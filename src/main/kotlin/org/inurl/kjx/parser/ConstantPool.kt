@@ -1,5 +1,6 @@
 package org.inurl.kjx.parser
 
+import org.apache.commons.text.StringEscapeUtils
 import kotlin.collections.HashMap
 
 class ConstantPool {
@@ -131,17 +132,24 @@ class ConstantPool {
 
     inner class StringValue(override val value: String): Value<String>(value) {
         override fun toString(): String {
-            return """"$value""""
+            return """"${StringEscapeUtils.escapeJava(value)}""""
         }
     }
 
     inner class NameAndTypeRef(val nameIndex: Int, val descriptorIndex: Int): Item()
 
-    inner class MethodHandle(val referenceKind: Int, val referenceIndex: Int): Item()
+    inner class MethodHandle(private val referenceKind: Int, private val referenceIndex: Int): Item() {
+        override fun toString(): String = get(referenceKind).toString() + ": " + get(referenceIndex).toString()
+    }
 
     inner class MethodType(val descriptorIndex: Int): Item()
 
-    inner class InvokeDynamic(override val bootstrapMethodAttrIndex: Int, override val nameAndTypeIndex: Int): Dynamic(bootstrapMethodAttrIndex, nameAndTypeIndex)
+    inner class InvokeDynamic(override val bootstrapMethodAttrIndex: Int, override val nameAndTypeIndex: Int): Dynamic(bootstrapMethodAttrIndex, nameAndTypeIndex) {
+        override fun toString(): String {
+            val nameAndTypeRef = get(nameAndTypeIndex) as NameAndTypeRef
+            return getString(nameAndTypeRef.nameIndex) + getString(nameAndTypeRef.descriptorIndex)
+        }
+    }
 
     inner class Module(val nameIndex: Int): Item()
 

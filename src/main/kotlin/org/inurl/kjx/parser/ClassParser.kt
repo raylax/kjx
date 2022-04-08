@@ -56,11 +56,23 @@ class ClassParser(private val source: DataInputStream, private val name: String)
                 "Signature" -> klass.signatureIndex = readUint2()
                 "SourceFile" -> klass.sourceFileIndex = readUint2()
                 "InnerClasses" -> forEach { klass.innerClasses += InnerClass(cp, readUint2(), readUint2(), readUint2(), readUint2()) }
+                "BootstrapMethods" -> klass.bootstrapMethods = parseBootstrapMethods(cp)
                 else -> source.skip(len)
             }
         }
 
         return klass
+    }
+
+    private fun parseBootstrapMethods(cp: ConstantPool): List<BootstrapMethod> {
+        val bootstrapMethods = mutableListOf<BootstrapMethod>()
+        forEach {
+            val bootstrapMethodRefIndex = readUint2()
+            val bootstrapArgumentIndexes = mutableListOf<Int>()
+            forEach { bootstrapArgumentIndexes += readUint2() }
+            bootstrapMethods += BootstrapMethod(cp, bootstrapMethodRefIndex, bootstrapArgumentIndexes)
+        }
+        return bootstrapMethods
     }
 
     private fun parserMethods(cp: ConstantPool): List<Method> {

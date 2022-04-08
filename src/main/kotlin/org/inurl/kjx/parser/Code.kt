@@ -49,13 +49,6 @@ class Code(val cp: ConstantPool, val maxStack: Int, val maxLocals: Int, val ops:
             when (opcode) {
                 Opcodes.NOP,
                 Opcodes.ACONST_NULL,
-                Opcodes.ICONST_M1,
-                Opcodes.ICONST_0,
-                Opcodes.ICONST_1,
-                Opcodes.ICONST_2,
-                Opcodes.ICONST_3,
-                Opcodes.ICONST_4,
-                Opcodes.ICONST_5,
                 Opcodes.LCONST_0,
                 Opcodes.LCONST_1,
                 Opcodes.FCONST_0,
@@ -157,6 +150,17 @@ class Code(val cp: ConstantPool, val maxStack: Int, val maxLocals: Int, val ops:
                 -> {
                     offset += 1
                     println(opcodeName)
+                }
+                Opcodes.ICONST_M1,
+                Opcodes.ICONST_0,
+                Opcodes.ICONST_1,
+                Opcodes.ICONST_2,
+                Opcodes.ICONST_3,
+                Opcodes.ICONST_4,
+                Opcodes.ICONST_5,
+                -> {
+                    offset += 1
+                    println("$opcodeName ${opcode - Opcodes.ICONST_0}")
                 }
                 Opcodes.ILOAD_0,
                 Opcodes.ILOAD_1,
@@ -362,8 +366,8 @@ class Code(val cp: ConstantPool, val maxStack: Int, val maxLocals: Int, val ops:
                     cp.getString(localVariable.descriptorIndex))
                 )
             }
-            println()
         }
+        println()
 
     }
 

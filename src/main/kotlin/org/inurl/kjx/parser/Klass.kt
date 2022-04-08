@@ -23,6 +23,8 @@ class Klass {
 
     lateinit var methods: List<Method>
 
+    lateinit var bootstrapMethods: List<BootstrapMethod>
+
     var annotations: List<Annotation> = mutableListOf()
 
     var signatureIndex: Int = 0
