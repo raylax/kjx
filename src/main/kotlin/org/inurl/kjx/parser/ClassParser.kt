@@ -2,6 +2,7 @@ package org.inurl.kjx.parser
 
 import java.io.DataInputStream
 import java.io.EOFException
+import java.lang.RuntimeException
 import java.nio.charset.StandardCharsets
 
 class ClassParser(private val source: DataInputStream, private val name: String) {
@@ -177,12 +178,6 @@ class ClassParser(private val source: DataInputStream, private val name: String)
         code.localVariableTypes = localVariableTypes
         code.localVariables = localVariables
         code.stackFrames = stackFrames
-        try {
-            code.parse()
-        } catch (e: IllegalStateException) {
-            println(name)
-            throw e
-        }
         return code
     }
 
@@ -288,8 +283,8 @@ class ClassParser(private val source: DataInputStream, private val name: String)
         val constantPool = ConstantPool()
         var i = 1
         while (i <= constantCount) {
-            if (readConstantItem(i, constantPool)) i++
-            i++
+            if (readConstantItem(i, constantPool)) i += 2
+            else i++
         }
         return constantPool
     }
@@ -322,20 +317,19 @@ class ClassParser(private val source: DataInputStream, private val name: String)
 
     private fun readBytes(n: Int): ByteArray {
         val bytes = ByteArray(n)
-        val r = source.read(bytes)
-        return if (r > -1) bytes else throw EOFException()
+        var remaining = n
+        while (true) {
+            val r = source.read(bytes, n - remaining, remaining)
+            if (r == -1) throw EOFException()
+            remaining -= r
+            if (remaining <= 0) return bytes
+        }
     }
 
-    private fun readUint1(): Int {
-        return source.readUnsignedByte()
-    }
+    private fun readUint1() = source.readUnsignedByte()
 
-    private fun readUint2(): Int {
-        return source.readUnsignedShort()
-    }
+    private fun readUint2() = source.readUnsignedShort()
 
-    private fun readUint4(): Long {
-        return Integer.toUnsignedLong(source.readInt())
-    }
+    private fun readUint4() = Integer.toUnsignedLong(source.readInt())
 
 }

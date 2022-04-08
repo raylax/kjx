@@ -1,6 +1,7 @@
 package org.inurl.kjx.parser
 
 import org.apache.commons.text.StringEscapeUtils
+import org.inurl.kjx.util.ClassUtil
 import kotlin.collections.HashMap
 
 class ConstantPool {
@@ -39,7 +40,12 @@ class ConstantPool {
 
     fun parseClass(index: Int): String =
         when (val item = get(index)) {
-            is StringValue -> item.value.replace("/", ".")
+            is StringValue -> when {
+                item.value.startsWith('L') && item.value.endsWith(';')
+                    -> parseClassName(item.value.substring(1, item.value.length - 1))
+                else
+                    -> parseClassName(item.value)
+            }
             is StringRef -> parseClassName(getString(index))
             is ClassRef -> parseClass(item.nameIndex)
             else -> throw IllegalStateException()
@@ -66,23 +72,7 @@ class ConstantPool {
 
     class Descriptor(val argTypes: List<String>, val returnType: String)
 
-    private fun parseClassName(n: String): String {
-        return when {
-            n.startsWith("L") -> n.substring(1, n.length - 1).replace("/", ".")
-            n.startsWith("[") -> parseClassName(n.substring(1)) + "[]"
-            else -> when (n) {
-                "B" -> "byte"
-                "C" -> "char"
-                "D" -> "double"
-                "F" -> "float"
-                "I" -> "int"
-                "J" -> "long"
-                "S" -> "short"
-                "Z" -> "boolean"
-                else -> n
-            }
-        }
-    }
+    private fun parseClassName(n: String): String = ClassUtil.normalize(n)
 
     open class Item
 

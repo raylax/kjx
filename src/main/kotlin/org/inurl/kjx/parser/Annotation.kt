@@ -5,6 +5,8 @@ open class Annotation(
     private val typeIndex: Int,
     private val valuePairs: List<ValuePair>) {
 
+    lateinit var classRef: Klass
+
     class ValuePair(
         private val cp: ConstantPool,
         private val nameIndex: Int,
@@ -37,9 +39,13 @@ open class Annotation(
 
     class StringValue(cp: ConstantPool, index: Int): ConstantValueIndex(cp, index)
 
-    class EnumClassValue(cp: ConstantPool, val typeIndex: Int, val constIndex: Int): Value()
+    class EnumClassValue(val cp: ConstantPool, private val typeIndex: Int, val constIndex: Int): Value() {
+        override fun toString(): String = cp.parseClass(typeIndex) + "." + cp.getString(constIndex)
+    }
 
-    class ClassValue(cp: ConstantPool, index: Int): ConstantValueIndex(cp, index)
+    class ClassValue(val cp: ConstantPool, private val index: Int): ConstantValueIndex(cp, index) {
+        override fun toString(): String = cp.parseClass(index)
+    }
 
     class AnnotationValue(cp: ConstantPool, val annotation: Annotation): Value()
 
@@ -48,6 +54,8 @@ open class Annotation(
     }
 
     override fun toString() = "@" + cp.parseClass(typeIndex) +  valuePairs.joinToString(", ", "(", ")")
+
+    fun getType(): String = cp.parseClass(typeIndex)
 
 }
 
